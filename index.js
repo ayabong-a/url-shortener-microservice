@@ -3,11 +3,15 @@ require("dotenv").config();
 const { nanoid } = require("nanoid");
 const mongoose = require("mongoose");
 const Url = require("./models/url");
+const dns = require("dns");
+const { URL } = require("url");
 
 const cors = require("cors");
 const app = express();
 
 app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static("public"));
 
 mongoose
@@ -15,40 +19,69 @@ mongoose
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
-  .then(() => {
-    console.log("Connected to MongoDB");
-  })
-  .catch((error) => {
-    console.error(error);
-  });
+  .then(() => console.log("Connected to MongoDB"))
+  .catch((error) => console.error(error));
+
+const invalidUrlMessage = "invalid url";
 
 app.get("/", (req, res) => {
   res.sendFile(__dirname + "/views/index.html");
 });
 
 app.post("/api/shorturl", async (req, res) => {
-  const { originalUrl } = req.body;
+  const { original_url } = req.body;
+  let hostname;
 
-  if (!originalUrl || !/^https?:\/\/.+/.test(originalUrl)) {
-    return res.status(400).json({ error: "Invalid URL" });
+  try {
+    const parsedUrl = new URL(original_url);
+    hostname = parsedUrl.hostname;
+  } catch (err) {
+    return res.json({ error: invalidUrlMessage });
   }
 
-  const shortUrl = nanoid(6);
-  const url = new Url({ shortUrl, originalUrl });
+  dns.lookup(hostname, async (err) => {
+    if (err) return res.json({ error: invalidUrlMessage });
 
-  await url.save();
+    let existing = await Url.findOne({ original_url });
+    if (existing) {
+      return res.json({
+        original_url: existing.original_url,
+        short_url: existing.short_url,
+      });
+    }
 
-  res.json({ original_url: originalUrl, short_url: shortUrl });
+    const short_url = nanoid(6).toLowerCase();
+    const newUrl = new Url({ original_url, short_url });
+
+    await newUrl.save();
+    res.json({ original_url, short_url });
+  });
+});
+
+app.get("/api/shorturl", async (req, res) => {
+  const { short_url, error } = req.query;
+
+  if (error) {
+    return res.json({ error });
+  }
+
+  const url = await Url.findOne({ short_url });
+  if (!url) return res.status(404).json({ error: invalidUrlMessage });
+
+  res.json({
+    original_url: url.original_url,
+    short_url: url.short_url,
+  });
 });
 
 app.get("/api/shorturl/:short_url", async (req, res) => {
   const { short_url } = req.params;
-  const url = await Url.findOne(short_url);
 
-  if (url) {
-    res.redirect(url.originalUrl);
+  const foundUrl = await Url.findOne({ short_url });
+  if (foundUrl) {
+    return res.redirect(foundUrl.original_url);
   } else {
-    res.status(404).send("Short URL not found");
+    return res.json({ error: invalidUrlMessage });
   }
 });
 
