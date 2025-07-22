@@ -59,13 +59,14 @@ app.post("/api/shorturl", async (req, res) => {
 });
 
 app.get("/api/shorturl", async (req, res) => {
-  const { short_url, error } = req.query;
+  const { id, error } = req.query;
 
   if (error) {
     return res.json({ error });
   }
 
-  const url = await Url.findOne({ short_url });
+  const url = await Url.findOne({ short_url: id });
+
   if (!url) return res.status(404).json({ error: invalidUrlMessage });
 
   res.json({
