@@ -28,7 +28,7 @@ Built as part of the [FreeCodeCamp Back End Development and APIs](https://www.fr
 }
 
 Response:
-```json
+
 {
     "original_url": "https://www.example.com",
     "short_url": "saa8gt"
