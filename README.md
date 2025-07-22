@@ -25,14 +25,14 @@ Built as part of the [FreeCodeCamp Back End Development and APIs](https://www.fr
 ```json
 {
   "original_url": "https://www.example.com"
-}
+}```
 
 Response:
-
+```json
 {
     "original_url": "https://www.example.com",
     "short_url": "saa8gt"
-}
+}```
 
 Redirect
 GET `/api/shorturl/saa8gt`
