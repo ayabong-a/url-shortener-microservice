@@ -1,6 +1,5 @@
 const express = require("express");
 require("dotenv").config();
-const { nanoid } = require("nanoid");
 const mongoose = require("mongoose");
 const Url = require("./models/url");
 const dns = require("dns");
@@ -50,41 +49,32 @@ app.post("/api/shorturl", async (req, res) => {
       });
     }
 
-    const short_url = nanoid(6).toLowerCase();
+    const count = await Url.countDocuments();
+    const short_url = count + 1;
+
     const newUrl = new Url({ original_url, short_url });
 
     await newUrl.save();
-    res.json({ original_url, short_url });
-  });
-});
-
-app.get("/api/shorturl", async (req, res) => {
-  const { id, error } = req.query;
-
-  if (error) {
-    return res.json({ error });
-  }
-
-  const url = await Url.findOne({ short_url: id });
-
-  if (!url) return res.status(404).json({ error: invalidUrlMessage });
-
-  res.json({
-    original_url: url.original_url,
-    short_url: url.short_url,
+    res.json({ original_url, short_url});
   });
 });
 
 app.get("/api/shorturl/:short_url", async (req, res) => {
-  const { short_url } = req.params;
+  const short_url = parseInt(req.params.short_url, 10);
+
+  if (isNaN(short_url)) {
+    return res.json({ error: invalidUrlMessage });
+  }
 
   const foundUrl = await Url.findOne({ short_url });
+
   if (foundUrl) {
     return res.redirect(foundUrl.original_url);
   } else {
     return res.json({ error: invalidUrlMessage });
   }
 });
+
 
 const listener = app.listen(process.env.PORT || 3000, () => {
   console.log(`Listening on port ${listener.address().port}`);
